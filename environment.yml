@@ -1,0 +1,39 @@
+# environment.yml
+name: pasta
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  # Core Python
+  - python=3.10
+  
+  - pytorch::pytorch=2.5.*
+  - pytorch::torchvision=0.20.*
+  - pytorch::pytorch-cuda=12.4
+  
+  - openslide-python
+  - geopandas
+  - rasterio
+  - shapely
+  
+  - pip
+  - pip:
+      - numpy<2.0
+      - scipy>=1.10
+      - pandas>=2.0
+      - h5py>=3.8
+      - pillow>=10.0
+      - opencv-python>=4.8
+      - scikit-image>=0.20
+      - albumentations>=1.3
+      - tifffile>=2023.0
+      - scanpy>=1.9
+      - anndata>=0.10
+      - timm>=1.0
+      - transformers>=4.40
+      - einops>=0.7
+      - huggingface-hub>=0.20
+      - tqdm>=4.66
+      - matplotlib>=3.8
+      - gradio>=4.0

@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  pasta-web:
+    image: localhost/pasta:latest
+    container_name: pasta-web-ui
+    restart: unless-stopped
+    ports:
+      - "7860:7860"
+    volumes:
+      # HuggingFace model cache (persistent) - using named volume
+      - pasta-hf-cache:/root/.cache/huggingface
+      # Model weight directory (optional, if you need to mount local model)
+      - ./model:/workspace/model:ro
+      # Result output directory (optional)
+      - ./results:/workspace/results
+      # Data directory (optional, if you need to mount local data)
+      - ./data:/workspace/data:ro
+    environment:
+      # HuggingFace configuration (read from .env file or environment variable)
+      - HF_TOKEN=${HF_TOKEN:-}
+      - HF_ENDPOINT=${HF_ENDPOINT:-https://hf-mirror.com}
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+      # Optional: custom cache location (if using custom path)
+      - HF_HOME=/root/.cache/huggingface
+      - TRANSFORMERS_CACHE=/root/.cache/huggingface
+      - HF_HUB_CACHE=/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    command: python web_ui.py --host 0.0.0.0 --port 7860
+
+volumes:
+  pasta-hf-cache:
+    driver: local
+
+

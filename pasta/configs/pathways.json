@@ -1,0 +1,46 @@
+{
+  "description": "Pathway configurations for PASTA",
+  
+  "default_14": {
+    "description": "14 tumor microenvirnment pathways",
+    "names": ["B-cells", "CAF", "Cell-Cycle", "DC", "EMT", "Endothelium", 
+              "Hypoxia", "Interferon-MHC-II", "MYC", "Macrophages", 
+              "Matrix", "NK-cells", "Stress", "T-cells"],
+    "tls_components": ["B-cells", "T-cells"]
+  },
+  "default_16": {
+    "description": "16 tumor microenvirnment pathways",
+    "names": ["B-cells", "CAF", "Cell-Cycle", "DC", "EMT", "Endothelium", "Hypoxia",
+    "Interferon-MHC-II", "MYC", "Macrophages", "Matrix", "NK-cells",
+    "Plasma-cells", "Stress ", "T-cells", "Treg"],
+    "tls_components": ["B-cells", "T-cells"]
+  },
+  "neuro_1": {
+    "description": "Neruo related pathways(Plaque)",
+    "names": ["Amyloid plaque", "Neuritic plaque"]
+  },
+  "neuro_2": {
+    "description": "Neuro related pathways(Core)",
+    "names": ["Macrophage", "OPC", "Microglia", "Oligodendrocyte", "T-cells", "NSC", "PIG", "Neuritic plaque"]
+  },
+  "neuro_3": {
+    "description": "Neuro related pathways(Aging)",
+    "names": ["aNSC/NPC","Aging from scRNAseq (SVZ datasets)","Aging from scRNAseq (Tabula Muris Senis)","Aging from scRNAseq (Ximerakis et al., 2019)",
+    "Astrocyte","B cell","Cholinergic neuron","Cortical layer (L1)","Cortical layer (L2/3)","Cortical layer (L2/3, L1)","Cortical layer (L5,L6,L2/3)",
+    "Dendritic cell", "Dividing cell", "Dopaminergic neuron", "Endothelial cell", "Ependymal cell", "Hemoglobin-expressing vascular cell functions", 
+    "Macrophage", "Marker related to NSC/qNSC distinction", "Mast cell", "Microglia", "Monocyte", "Neuroblast", "Neuron", "Neuron-Excitatory", 
+    "Neuron-Inhibitory", "Neuron-MSN", "Neutrophil", "NK cell", "Oligodendrocyte", "OPC", "Peptidergic neuron", "Pericyte", "Related to aging (GenAge)", 
+    "Related to cell adhesion/migration", "Related to endothelial cell heterogeneity", "Related to immune response", "Related to lipids and membrane", 
+    "Related to meninges function", "Related to neurogenesis", "Related to neuropeptide", "Related to NSC heterogeneity", "Related to reprogramming", 
+    "Related to senescence", "Related to T cell function", "Related to vasculogenesis", "Serotoninergic neuron", "T cell", "VLMC", "VSMC"]
+  },
+  "313_Xenium": {
+    "description": "313 pathways from Xenium dataset",
+    "names": "pasta/configs/gene_names/Xenium_gene_names.txt"
+  },
+  "100_rep_genes": {
+    "description": "100 representative genes for benchmarks",
+    "names": "pasta/configs/gene_names/rep_gene_names.txt"
+  }
+}
+

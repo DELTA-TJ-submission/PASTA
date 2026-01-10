@@ -1,0 +1,95 @@
+{
+  "description": "Demo configuration for PASTA",
+  "version": "1.0",
+  
+  "huggingface": {
+    "token": null,
+    "endpoint": "https://hf-mirror.com"
+  },
+  
+  "common": {
+    "save_dir": "results/demo",
+    "source": "data/",
+    "patch_size": 256
+  },
+  
+  "patch_extraction": {
+    "patch_save_dir": "results/demo/patches",
+    "mask_save_dir": "results/demo/masks",
+    "stitch_save_dir": "results/demo/stitches",
+    "step_size": 128,
+    "patch_level": 0,
+    "auto_patch_size": false,
+    "use_default_params": false,
+    "seg": true,
+    "patch": true,
+    "stitch": true,
+    "save_mask": true,
+    "auto_skip": true,
+    "process_list": null,
+    
+    "seg_params": {
+      "seg_level": -1,
+      "sthresh": 5,
+      "mthresh": 1,
+      "close": 4,
+      "use_otsu": false,
+      "keep_ids": "none",
+      "exclude_ids": "none"
+    },
+    
+    "filter_params": {
+      "a_t": 2,
+      "a_h": 4,
+      "max_n_holes": 8
+    },
+    
+    "vis_params": {
+      "vis_level": -1,
+      "line_thickness": 100
+    },
+    
+    "patch_params": {
+      "use_padding": true,
+      "contour_fn": "four_pt"
+    }
+  },
+  
+  "h5_processing": {
+    "h5_path": "results/demo/patches",
+    "slide_path": "data",
+    "file_type": ".tif",
+    "mask_path": null,
+    "max_workers": 8,
+    "save_edge": true,
+    "edge_info_path": "results/demo/edge_info",
+    "blank": 3000
+  },
+  
+  "inference": {
+    "backbone_model_name": "Phikonv2",
+    "model_path": "model/Phikonv2_no_pos_embed.pt",
+    "h5_path": "results/demo/patches",
+    "wsi_path": "data",
+    "edge_info_path": "results/demo/edge_info",
+    "output_path": "results/demo/predictions",
+    "file_type": ".tif",
+    
+    "pathway_file": "pasta/configs/pathways.json",
+    "pathway_config": "default_14",
+    "selected_pathways": ["CAF"],
+    "include_tls": false,
+    
+    "prediction_mode": "pixel",
+    "downsample_size": 10,
+    "figsize": 8,
+    "device": "cuda:0",
+    "draw_images": true,
+    "save_h5ad": true,
+    "save_tiffs": false,
+    "cmap": "turbo",
+    "use_mask": false,
+    "blank": 3000
+  }
+}
+

@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pasta"
+version = "0.1.0"
+description = "PASTA - PAthological Super-resolution Transcriptome-guided frAmework"
+requires-python = ">=3.8"
+authors = [
+    {name = "Fangliangzi Meng", email = "mengflz@tongji.edu.cn"}
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pasta*"]
+

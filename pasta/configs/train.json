@@ -1,0 +1,63 @@
+{
+  "description": "Training configuration for PASTA",
+  "version": "1.0",
+  
+  "huggingface": {
+    "token": null,
+    "endpoint": "https://hf-mirror.com"
+  },
+  
+  "data": {
+    "meta_path": "data_train/meta.csv",
+    "tile_h5_base": "data_train/patches",
+    "info_base": "data_train/info_input",
+    "train_test_split": false,
+    "train_ratio": 0.8,
+    "random_seed": 42
+  },
+  
+  "pathway": {
+    "info_type": "expression",
+    "num_pathways": 313,
+    "pathway_file": "code/configs/pathways.json",
+    "pathway_config": "313_Xenium"
+  },
+  
+  "model": {
+    "backbone_model": "UNI",
+    "warm_weight_path": null,
+    "mask": false,
+    "drop_ratio": 1,
+    "non_negative": false,
+    "enable_attention_hooks": false,
+    "scale": 1.0
+  },
+  
+  "training": {
+    "epochs": 101,
+    "batch_size": 256,
+    "learning_rate": 1.0e-4,
+    "warmup_steps": 10,
+    "sample_ratio": 0.25,
+    "augment": true,
+    "alpha": 0.5
+  },
+  
+  "output": {
+    "output_dir": "results/train/UNI",
+    "save_interval": 10,
+    "save_start_epoch": 20
+  },
+  
+  "early_stopping": {
+    "patience": 10,
+    "stop_epoch": 10
+  },
+  
+  "scheduler": {
+    "type": "Adam",
+    "step_size": 10,
+    "gamma": 0.1
+  }
+}
+

@@ -1,0 +1,36 @@
+{
+  "description": "Inference configuration for PASTA",
+  
+  "huggingface": {
+    "token": null,
+    "endpoint": "https://hf-mirror.com"
+  },
+  
+  "inference": {
+    "backbone_model_name": "UNI",
+    "model_path": "model/UNI_pos_embed.pt",
+    "h5_path": "/data_NFS3/CART_HE/results_new/patches/",
+    "wsi_path": "/data_NFS3/CART_HE/wsis/",
+    "edge_info_path": null,
+    "output_path": "/data_NFS3/CART_HE/results_new/predictions",
+    "file_type": ".svs",
+    
+    "pathway_file": "code/configs/pathways.json",
+    "pathway_config": "default_14",
+    "selected_pathways": null,
+    "include_tls": false,
+    
+    "prediction_mode": "pixel",
+    "patch_size": 256,
+    "downsample_size": 4,
+    "figsize": 10,
+    "device": "cuda:3",
+    "draw_images": true,
+    "save_h5ad": true,
+    "save_tiffs": false,
+    "cmap": "turbo",
+    "use_mask": false,
+    "blank": 3000
+  }
+}
+
