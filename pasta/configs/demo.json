@@ -68,7 +68,7 @@
   
   "inference": {
     "backbone_model_name": "Phikonv2",
-    "model_path": "model/Phikonv2_no_pos_embed.pt",
+    "model_path": "model/Phikonv2_14_no_pos.pt",
     "h5_path": "results/demo/patches",
     "wsi_path": "data",
     "edge_info_path": "results/demo/edge_info",

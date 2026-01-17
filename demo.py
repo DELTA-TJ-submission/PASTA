@@ -59,6 +59,20 @@ def main():
         setup_huggingface(config['huggingface'])
     # Run pipeline
     try:
+        print("🚀 Starting demo...")
+        model_path = config['inference']['model_path']
+        if not os.path.exists(model_path):
+            print("\n [0/3] Downloading PASTA model weights...")
+            from huggingface_hub import hf_hub_download
+            downloaded_path = hf_hub_download(
+                repo_id="mengflz/pasta-tumor",
+                filename=os.path.basename(model_path),
+                local_dir=os.path.dirname(model_path) or ".",
+                local_dir_use_symlinks=False
+            )
+            os.rename(downloaded_path, model_path)
+            print(f"✓ Model weights downloaded to: {model_path}")
+        
         print("\n[1/3] Extracting patches...")
         run_patch_extraction(config)
         print("✓ Patch extraction complete")

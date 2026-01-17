@@ -2,10 +2,10 @@
 <div align="center">
   <img src=".github/PASTA_icon.png" alt="PASTA Icon" width="200"/>
   
-  # A plug-and-play foundation model paradigm for multilevel gigapixel phenotyping 
+  # A plug-and-play foundation model paradigm for gigapixel virual tissue phenotyping 
   
   [![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Models-yellow)](https://huggingface.co/collections/tongjideltalab/pasta)
-  [![Docker](https://img.shields.io/badge/Docker-Available-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/r/mengflz/pasta)
+  [![Docker](https://img.shields.io/badge/Docker-Available-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/repository/docker/bm2labtongji/pasta/general)
   [![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
   [![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
   [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
@@ -31,25 +31,27 @@
 
 ### Option 1: Docker Hub (Recommended)
 
-Pull the pre-built Docker image directly from [Docker Hub](https://hub.docker.com/r/mengflz/pasta) (includes all dependencies and code):
+Pull the pre-built Docker image directly from [Docker Hub](https://hub.docker.com/repository/docker/bm2labtongji/pasta/general) (includes all dependencies and code):
 
 ```bash
 # Pull the latest PASTA image
-docker pull mengflz/pasta:latest
+docker pull bm2labtongji/pasta:latest
 
 # Run demo
 docker run --gpus all --shm-size=16g -it --rm \
-  mengflz/pasta:latest \
+  -v .:/workspace/results \
+  bm2labtongji/pasta:latest \
   python demo.py
 ```
 
 **For Podman users:**
 
 ```bash
-podman pull mengflz/pasta:latest
+podman pull bm2labtongji/pasta:latest
 
 podman run --device nvidia.com/gpu=all --shm-size=16g -it --rm \
-  mengflz/pasta:latest \
+  -v .:/workspace/results \
+  bm2labtongji/pasta:latest \
   python demo.py
 ```
 

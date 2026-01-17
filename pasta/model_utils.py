@@ -326,5 +326,6 @@ def load_model_weights(model, trainable_path=None):
     
         _ = model.load_state_dict(trainable_state, strict=False)
         print(f"✓ Model weights loaded successfully")
-    
+    else:
+        raise FileNotFoundError(f"✗ Trainable weights {trainable_path} not found")
     return model
