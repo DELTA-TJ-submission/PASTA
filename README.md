@@ -8,7 +8,7 @@
   [![Docker](https://img.shields.io/badge/Docker-Available-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/repository/docker/bm2labtongji/pasta/general)
   [![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
   [![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
-  [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+  [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-red.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
   
 </div>
@@ -536,7 +536,7 @@ Currently PASTA supports 15 state-of-the-art pathological foundation models:
 
 ## License
 
-Our code and model weights are released under the Apache License 2.0. See [LICENSE](LICENSE) for additional details.
+Our code and model weights are released under the GPLv3. See [LICENSE](LICENSE) for additional details.
 
 ---
 
