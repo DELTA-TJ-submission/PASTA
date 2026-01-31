@@ -302,9 +302,10 @@ def update_pathway_list(pathway_config):
 custom_css = """
 #header-container {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 1.5em;
+    gap: 0.8em;
     margin-top: 1em;
     margin-bottom: 1em;
     padding: 1em 0;
@@ -315,8 +316,8 @@ custom_css = """
 }
 
 #main-logo img {
-    width: 80px;
-    height: 80px;
+    width: 60px;
+    height: 60px;
     object-fit: contain;
     filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
     transition: transform 0.3s ease;
@@ -329,7 +330,8 @@ custom_css = """
 #title-group {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
+    text-align: center;
 }
 
 #main-title {
