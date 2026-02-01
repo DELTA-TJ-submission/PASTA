@@ -441,9 +441,6 @@ sample002
 ...
 ```
 
-**Expression CSV format:**
-Each CSV should contain pathway scores or gene expression values with barcodes/coordinates as index.
-
 ### Configure Training
 
 Edit `code/configs/train.json`:
