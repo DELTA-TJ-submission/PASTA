@@ -44,8 +44,6 @@ docker run --gpus all --shm-size=16g -it --rm \
   python demo.py
 ```
 
-Installation time: ~10-15 minutes (depending on network speed for Docker image download)
-
 **For Podman users:**
 
 ```bash
@@ -187,9 +185,7 @@ The demo uses the configuration in `code/configs/demo.json`. Results will be sav
 - `patches/`: Extracted image patches (H5 format)
 - `masks/`: Tissue segmentation masks
 - `stitches/`: Visualization of patch coordinates
-- `predictions/`: Model predictions and visualizations (including heatmap plots)
-
-**Demo Runtime:** On the server with the hardware configuration described above, the demo pipeline typically completes within approximately 10-15 minutes. Runtime may vary on different systems.
+- `predictions/`: Model predictions and visualizations
 
 ---
 
@@ -423,11 +419,18 @@ data_train/
 │   ├── sample001.h5
 │   ├── sample002.h5
 │   └── ...
-└── info_input/
-    └── expression/             # Gene expression or pathway scores
-        ├── sample001.csv
-        ├── sample002.csv
-        └── ...
+├── st/
+│   ├── sample001.h5ad          # Gene expression
+│   ├── sample002.h5ad 
+│   └── ...
+├── pathway/
+│   ├── sample001.csv           # Pathway scores
+│   ├── sample002.csv 
+│   └── ...
+├── wsis/
+│   ├── sample001.tif           # HE images
+│   ├── sample002.tif 
+│   └── ...
 ```
 
 **meta.csv format:**
@@ -534,6 +537,9 @@ Currently PASTA supports 15 state-of-the-art pathological foundation models:
   - Cell-level aggregation with cell segmentation methods
   - Visualization tools
   - Archetypes identification
+  - Data preparation
+  - Benchmark metrics calculation
+  - Qupath script for IHC quantification
   - (to be continue)
   
 ---
