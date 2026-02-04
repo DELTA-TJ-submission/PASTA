@@ -233,10 +233,10 @@ Options:
 
 ```bash
 # Run with web interface exposed
-docker run --gpus all -p 7860:7860 -it mengflz/pasta:latest python web_ui.py
+docker run --gpus all -p 7860:7860 -it bm2labtongji/pasta:latest python web_ui.py
 
 # For Podman
-podman run --device nvidia.com/gpu=all -p 7860:7860 -it mengflz/pasta:latest python web_ui.py
+podman run --device nvidia.com/gpu=all -p 7860:7860 -it bm2labtongji/pasta:latest python web_ui.py
 ```
 
 📖 For detailed Web UI usage instructions, see [WEB_UI_README.md](WEB_UI_README.md)
