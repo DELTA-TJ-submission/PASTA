@@ -420,8 +420,12 @@ data_train/
 │   ├── sample002.h5
 │   └── ...
 ├── st/
-│   ├── sample001.h5ad          # Gene expression
+│   ├── sample001.h5ad          # ST h5ad files
 │   ├── sample002.h5ad 
+│   └── ...
+├── gene/
+│   ├── sample001.csv           # Gene expression
+│   ├── sample002.csv 
 │   └── ...
 ├── pathway/
 │   ├── sample001.csv           # Pathway scores
@@ -432,6 +436,7 @@ data_train/
 │   ├── sample002.tif 
 │   └── ...
 ```
+You can set info_dir to either the gene/ or pathway/ directory, depending on whether you want to use gene expression or pathway scores as input.
 
 **meta.csv format:**
 ```csv

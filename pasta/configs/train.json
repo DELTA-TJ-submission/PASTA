@@ -10,7 +10,7 @@
   "data": {
     "meta_path": "data_train/meta.csv",
     "tile_h5_base": "data_train/patches",
-    "info_base": "data_train/info_input",
+    "info_base": "data_train/pathway",
     "train_test_split": false,
     "train_ratio": 0.8,
     "random_seed": 42

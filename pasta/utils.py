@@ -34,6 +34,62 @@ def setup_huggingface(hf_cfg):
         os.environ["HF_TOKEN"] = token
         from huggingface_hub import login
         login(token=token)
+
+
+def ensure_model_weights(model_path: str, repo_id: str = "mengflz/pasta-tumor") -> None:
+    """
+    Ensure that the model weights exist at the given path.
+
+    If the file does not exist, it will be downloaded from HuggingFace using
+    ``huggingface_hub.hf_hub_download``. This mirrors the behaviour in ``demo.py``,
+    but is exposed as a reusable utility.
+
+    Parameters
+    ----------
+    model_path:
+        Target path (relative or absolute) where the model weights should reside.
+    repo_id:
+        HuggingFace repo id to download from. By default uses ``mengflz/pasta-tumor``.
+    """
+    if not model_path:
+        return
+
+    # If the model already exists, do nothing.
+    if os.path.exists(model_path):
+        return
+
+    try:
+        from huggingface_hub import hf_hub_download
+    except Exception as e:
+        raise RuntimeError(
+            f"huggingface_hub is required to download model weights, but import failed: {e}"
+        )
+
+    filename = os.path.basename(model_path)
+    local_dir = os.path.dirname(model_path) or "."
+
+    os.makedirs(local_dir, exist_ok=True)
+
+    print(f"[PASTA] Model weights not found at '{model_path}', downloading '{filename}' from '{repo_id}'...")
+
+    downloaded_path = hf_hub_download(
+        repo_id=repo_id,
+        filename=filename,
+        local_dir=local_dir,
+        local_dir_use_symlinks=False,
+    )
+
+    # Move/rename to the desired final location if needed.
+    if downloaded_path != model_path:
+        try:
+            os.replace(downloaded_path, model_path)
+        except Exception:
+            # Fallback to shutil.move semantics without importing globally.
+            import shutil
+
+            shutil.move(downloaded_path, model_path)
+
+    print(f"[PASTA] Model weights ready at '{model_path}'.")
         
 def generate_he_mask_not_white(image_np: np.ndarray, white_threshold = 0.8, black_threshold = 0.15, kernel_size = 17) -> np.ndarray:
     '''Generate the mask of the HE image'''

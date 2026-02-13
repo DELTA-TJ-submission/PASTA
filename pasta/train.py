@@ -151,9 +151,9 @@ def main(rank, world_size, cfg):
                                                       sampler=train_sampler)
             for batch_idx, batch in enumerate(tile_dataloader):
                 batch = post_collate_fn(batch)
-                imgs_raw = batch['imgs']; imm_score = batch['imm_score']
+                imgs_raw = batch['imgs']; info_values = batch['info_values']
 
-                imgs_raw = imgs_raw.to(device); imm_score = imm_score.to(device)
+                imgs_raw = imgs_raw.to(device); info_values = info_values.to(device)
                 if mask:
                     mask_ = batch['mask']
                     mask_ = mask_.to(device)
@@ -163,10 +163,10 @@ def main(rank, world_size, cfg):
                 
                 with torch.amp.autocast('cuda', dtype=torch.bfloat16):
                     if torch.rand(1).item() > drop_ratio:
-                        _, pred_mean, pred_recon = model(imgs,imm_score)
+                        _, pred_mean, pred_recon = model(imgs, info_values)
                     else:
                         _, pred_mean, pred_recon = model(imgs)
-                    reg_loss = criterion(pred_mean, imm_score)
+                    reg_loss = criterion(pred_mean, info_values)
                     if model_name in OUT_RESIZE_MODEL:
                         pred_recon = F.interpolate(pred_recon, size=(224, 224), mode="bilinear")
                     recon_loss = recon_criterion(imgs_raw, pred_recon)
@@ -201,9 +201,9 @@ def main(rank, world_size, cfg):
                                                       sampler=train_sampler)
             for batch_idx, batch in enumerate(tile_dataloader):
                 batch = post_collate_fn(batch)
-                imgs_raw = batch['imgs']; imm_score = batch['imm_score']
+                imgs_raw = batch['imgs']; info_values = batch['info_values']
 
-                imgs_raw = imgs_raw.to(device); imm_score = imm_score.to(device)
+                imgs_raw = imgs_raw.to(device); info_values = info_values.to(device)
                 if mask:
                     mask_ = batch['mask']
                     mask_ = mask_.to(device)
@@ -214,7 +214,7 @@ def main(rank, world_size, cfg):
                 with torch.inference_mode(): 
                     # drop gene info to prevent shortcut
                     _, pred_mean, pred_recon = model(imgs)
-                    reg_loss = criterion(pred_mean, imm_score)
+                    reg_loss = criterion(pred_mean, info_values)
                     if model_name in OUT_RESIZE_MODEL:
                         pred_recon = F.interpolate(pred_recon, size=(224, 224), mode="bilinear")
                     recon_loss = recon_criterion(imgs_raw, pred_recon)

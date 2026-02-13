@@ -3,11 +3,11 @@
 
 import os
 import glob
-import json
 import shutil
 from typing import Dict, List, Tuple, Optional
 import pandas as pd
 import numpy as np
+import scanpy as sc
 
 from pasta.utils import load_pathway_config
 
@@ -36,10 +36,7 @@ def scan_model_files(model_dir: str = "model") -> Dict[str, List[str]]:
     model_files = glob.glob(os.path.join(model_dir, "**/*.pt"), recursive=True) + \
                   glob.glob(os.path.join(model_dir, "**/*.pth"), recursive=True)
     
-    # Convert to absolute paths for consistency
     model_files = [os.path.abspath(f) for f in model_files]
-    
-    # Map common filename patterns to backbone names
     model_mapping = {}
     
     backbone_patterns = {
@@ -75,10 +72,8 @@ def scan_model_files(model_dir: str = "model") -> Dict[str, List[str]]:
         basename = os.path.basename(model_file)
         basename_lower = basename.lower()
         
-        # Try to match filename to backbone (check longer patterns first)
         matched = False
         for backbone, patterns in sorted_backbones:
-            # Sort patterns by length (descending) within each backbone
             sorted_patterns = sorted(patterns, key=len, reverse=True)
             
             for pattern in sorted_patterns:
@@ -91,7 +86,6 @@ def scan_model_files(model_dir: str = "model") -> Dict[str, List[str]]:
             if matched:
                 break
         
-        # If no match, add as "Unknown"
         if not matched:
             if "Unknown" not in model_mapping:
                 model_mapping["Unknown"] = []
@@ -186,13 +180,14 @@ def create_temp_config(
         ext = os.path.splitext(wsi_path)[1]
         file_type = ext if ext else ".tif"
     
-    # Get directory containing the WSI file (seg_and_patch expects a directory)
     wsi_dir = os.path.dirname(wsi_path)
     wsi_filename = os.path.basename(wsi_path)
     
-    # Use provided values or fall back to environment variables or defaults
     final_hf_token = hf_token if hf_token and hf_token.strip() else os.environ.get("HF_TOKEN")
     final_hf_endpoint = hf_endpoint if hf_endpoint and hf_endpoint.strip() else os.environ.get("HF_ENDPOINT", "https://hf-mirror.com")
+
+    if not model_path:
+        model_path = "model/Phikonv2_14_no_pos.pt"
     
     config = {
         "description": "Web UI temporary configuration",
@@ -201,7 +196,7 @@ def create_temp_config(
             "endpoint": final_hf_endpoint
         },
         "patch_extraction": {
-            "source": wsi_dir,  # seg_and_patch expects a directory, not a file
+            "source": wsi_dir,  
             "save_dir": task_output_dir,
             "patch_save_dir": os.path.join(task_output_dir, "patches"),
             "mask_save_dir": os.path.join(task_output_dir, "masks"),
@@ -276,7 +271,6 @@ def create_temp_config(
             "blank": 3000
         }
     }
-    
     return config
 
 
@@ -315,12 +309,10 @@ def format_results_for_display(result_paths: Dict[str, str]) -> Tuple[List[str],
                         overlay_files = sorted(glob.glob(os.path.join(overlay_dir, "*.png")))
                         overlays.extend(overlay_files)
                     
-                    # Look for h5ad
                     h5ad_files = glob.glob(os.path.join(sample_path, "*.h5ad"))
                     if h5ad_files:
                         h5ad_path = h5ad_files[0]
                     
-                    # Create summary
                     summary_lines.append(f"## Sample: {sample_dir}")
                     summary_lines.append(f"- Heatmaps generated: {len(plot_files) if 'plot_files' in locals() else 0}")
                     summary_lines.append(f"- Overlay images: {len(overlay_files) if 'overlay_files' in locals() else 0}")
@@ -378,12 +370,11 @@ def get_result_statistics(h5ad_path: str) -> pd.DataFrame:
         DataFrame with statistics
     """
     try:
-        import scanpy as sc
         adata = sc.read_h5ad(h5ad_path)
         
         # Extract basic statistics
         stats = []
-        for var_name in adata.var_names[:20]:  # Limit to first 20 pathways
+        for var_name in adata.var_names[:20]: 
             values = adata[:, var_name].X
             if hasattr(values, 'toarray'):
                 values = values.toarray()

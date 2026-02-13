@@ -88,10 +88,10 @@ def post_collate_fn(batch):
     if batch["coords"].dim() == 3:
         assert batch["coords"].size(0) == 1
         batch["coords"] = batch["coords"].squeeze(0)
-    if 'imm_score' in batch.keys():
-        if batch["imm_score"].dim() == 3:
-            assert batch["imm_score"].size(0) == 1
-            batch["imm_score"] = batch["imm_score"].squeeze(0)
+    if 'info_values' in batch.keys():
+        if batch["info_values"].dim() == 3:
+            assert batch["info_values"].size(0) == 1
+            batch["info_values"] = batch["info_values"].squeeze(0)
     if 'mask' in batch.keys():
         if batch["mask"].dim() == 5:
             assert batch["mask"].size(0) == 1

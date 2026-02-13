@@ -6,7 +6,6 @@ from PIL import Image
 import pandas as pd
 from pasta.model_utils import get_disk_mask
 import albumentations as A
-from albumentations.pytorch import ToTensorV2
 import openslide
 import os
 
@@ -43,14 +42,15 @@ def load_and_augment_images(batch_images):
 
 
 class H5TileDataset(Dataset):
-    def __init__(self, h5_path, imm_path, img_transform=None, chunk_size=1000, mask=False, sample_ratio=None, augment=False):
+    def __init__(self, h5_path, info_path, img_transform=None, chunk_size=1000, mask=False, sample_ratio=None, augment=False):
         self.h5_path = h5_path
         self.img_transform = img_transform
         self.chunk_size = chunk_size
         self.mask = mask
         self.augment = augment
-        self.imm_df = pd.read_csv(imm_path, index_col=0)
-        self.imm_df.index = self.imm_df.index.astype(str)
+        # spot-level information (e.g., pathway scores) indexed by barcode
+        self.info_df = pd.read_csv(info_path, index_col=0)
+        self.info_df.index = self.info_df.index.astype(str)
         with h5py.File(h5_path, 'r') as f:
             self.n_chunks = int(np.ceil(len(f['barcode']) / chunk_size))
         self.sample_ratio = sample_ratio
@@ -64,13 +64,13 @@ class H5TileDataset(Dataset):
             imgs = f['img'][start_idx:end_idx]
             barcodes = [barcode.decode('utf-8') for barcode in f['barcode'][start_idx:end_idx].flatten()]
             coords = f['coords'][start_idx:end_idx]
-        imm_score = torch.Tensor(self.imm_df.loc[barcodes].values)
+        info_values = torch.Tensor(self.info_df.loc[barcodes].values)
         if self.sample_ratio:
             selected = np.random.choice(range(len(imgs)), size=max(int(len(imgs)*self.sample_ratio),1), replace=False, p=None)
             imgs = imgs[selected]
             barcodes = [barcodes[i] for i in selected]
             coords = coords[selected]
-            imm_score = imm_score[selected]
+            info_values = info_values[selected]
             
         if self.augment:
             imgs = load_and_augment_images(imgs)
@@ -81,9 +81,9 @@ class H5TileDataset(Dataset):
             mask = get_disk_mask(radius=100)
             mask_tensor = torch.from_numpy(mask).expand(imgs.shape[0],3, -1, -1)
 
-            return {'imgs': imgs, 'barcodes': barcodes, 'coords': coords, 'imm_score': imm_score, 'mask': mask_tensor}
+            return {'imgs': imgs, 'barcodes': barcodes, 'coords': coords, 'info_values': info_values, 'mask': mask_tensor}
         else:
-            return {'imgs': imgs, 'barcodes': barcodes, 'coords': coords, 'imm_score': imm_score}
+            return {'imgs': imgs, 'barcodes': barcodes, 'coords': coords, 'info_values': info_values}
 
 
 class H5TileDataset_infer(Dataset):

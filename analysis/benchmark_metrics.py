@@ -253,42 +253,42 @@ def evaluate_fine_grained(model, sample_list, model_name, h5_dir, wsi_dir, adata
     return tot_results
 
 
-def evaluate_spot_level(model, sample_list, model_name, h5_dir, imm_score_dir, 
+def evaluate_spot_level(model, sample_list, model_name, h5_dir, info_dir, 
                        device='cuda:0'):
     """Evaluate model at spot level with direct comparison."""
     tot_results = {'PCC': {}, 'SSIM': {}, 'RMSE': {}}
     
     for sample_id in sample_list:
         tile_h5_path = f'{h5_dir}/{sample_id}.h5'
-        imm_score_path = f'{imm_score_dir}/{sample_id}.csv'
+        info_path = f'{info_dir}/{sample_id}.csv'
         
         print(f'Processing {sample_id}')
         
-        tile_dataset = H5TileDataset(tile_h5_path, imm_score_path, chunk_size=64,
+        tile_dataset = H5TileDataset(tile_h5_path, info_path, chunk_size=64,
                                      img_transform=get_img_transforms(model_name))
         tile_dataloader = torch.utils.data.DataLoader(tile_dataset, batch_size=1,
                                                       shuffle=False, num_workers=1)
         
-        pred_list, imm_score_list, coords_list = [], [], []
+        pred_list, info_values_list, coords_list = [], [], []
         
         with torch.inference_mode():
             for batch in tqdm(tile_dataloader, total=len(tile_dataloader)):
                 batch = post_collate_fn(batch)
                 imgs = batch['imgs'].to(device)
-                imm_score = batch['imm_score']
+                info_values = batch['info_values']
                 
-                imm_score_list.append(imm_score)
+                info_values_list.append(info_values)
                 coords_list.append(batch['coords'])
                 
                 _, pred_mean, _ = model(imgs)
                 pred_list.append(pred_mean.detach().cpu())
         
         pred_out = torch.cat(pred_list, dim=0)
-        imm_score_df = torch.cat(imm_score_list, dim=0)
+        info_values_tensor = torch.cat(info_values_list, dim=0)
         coords = torch.cat(coords_list, dim=0)
         
         correlation_list, rmse_list, ssim_list = calculate_metrics(
-            pred_out.numpy(), imm_score_df.numpy()
+            pred_out.numpy(), info_values_tensor.numpy()
         )
         
         tot_results['PCC'][sample_id] = correlation_list
@@ -333,13 +333,13 @@ def run_fine_grained_benchmark(model_name, model_path, meta_csv, h5_dir, wsi_dir
     return tot_results
 
 
-def run_spot_level_benchmark(model_name, model_path, sample_list, h5_dir, imm_score_dir,
+def run_spot_level_benchmark(model_name, model_path, sample_list, h5_dir, info_dir,
                              output_dir, device='cuda:0', pathway_dim=100):
     """Run spot-level benchmark evaluation."""
     model = load_pasta_model(model_path, model_name, pathway_dim, device)
     
     tot_results = evaluate_spot_level(model, sample_list, model_name, h5_dir, 
-                                     imm_score_dir, device)
+                                     info_dir, device)
     
     os.makedirs(output_dir, exist_ok=True)
     with open(os.path.join(output_dir, 'spot_level_metrics.pkl'), 'wb') as f:

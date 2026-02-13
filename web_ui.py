@@ -48,7 +48,7 @@ def run_prediction_pipeline(task_id: str, wsi_path: str, config: dict):
     """
     
     try:
-        from pasta.utils import setup_huggingface
+        from pasta.utils import setup_huggingface, ensure_model_weights
         # Setup HuggingFace if needed
         if config['huggingface']['endpoint']:
             setup_huggingface(config['huggingface'])
@@ -92,7 +92,7 @@ def run_prediction_pipeline(task_id: str, wsi_path: str, config: dict):
         
         # Step 3: Run inference (60-100%)
         task_manager.update_progress(task_id, 0.65, "Loading model...")
-        
+
         # Ensure HuggingFace is set up before loading model
         if config['huggingface']['endpoint']:
             os.environ["HF_ENDPOINT"] = config['huggingface']['endpoint']
@@ -103,7 +103,16 @@ def run_prediction_pipeline(task_id: str, wsi_path: str, config: dict):
                 login(token=config['huggingface']['token'])
             except Exception as e:
                 print(f"Warning: HF login failed: {e}")
-        
+
+        # Ensure model weights exist (auto-download when missing), mirroring demo.py behaviour
+        model_path = config.get('inference', {}).get('model_path')
+        if model_path:
+            try:
+                ensure_model_weights(model_path)
+            except Exception as e:
+                # Do not hard-fail here; let downstream code surface a clear error if needed
+                print(f"Warning: automatic model download failed for '{model_path}': {e}")
+
         run_inference_pipeline(config['inference'])
         
         task_manager.update_progress(task_id, 0.95, "Generating visualizations...")
@@ -316,15 +325,11 @@ custom_css = """
 }
 
 #main-logo img {
-    width: 60px;
-    height: 60px;
+    width: 120px;
+    height: 120px;
     object-fit: contain;
     filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
     transition: transform 0.3s ease;
-}
-
-#main-logo img:hover {
-    transform: scale(1.05);
 }
 
 #title-group {
@@ -405,10 +410,10 @@ def build_interface():
         # Header with logo and title in one row
         with gr.Row(elem_id="header-container"):
             if ICON_PATH.exists():
-                gr.Image(value=str(ICON_PATH), show_label=False, container=False, elem_id="main-logo", height=80, width=80)
+                gr.Image(value=str(ICON_PATH), show_label=False, container=False, elem_id="main-logo", height=120, width=120)
             with gr.Column(elem_id="title-group", scale=1):
                 gr.Markdown("# 🔬 PASTA Spatial Pathology Prediction System", elem_id="main-title")
-                gr.Markdown("A plug-and-play foundation model paradigm for multilevel gigapixel phenotyping", elem_id="subtitle")
+                gr.Markdown("A plug-and-play model paradigm for gigapixel vritual tissue phenotyping", elem_id="subtitle")
         
         # Hidden state for task ID
         task_id_state = gr.State("")
