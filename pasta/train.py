@@ -56,7 +56,7 @@ def main(rank, world_size, cfg):
     """Main training function using DDP."""
  
     info_type = cfg['pathway']['info_type']
-    num_pathways = cfg['pathway']['num_pathways']
+    output_dim = cfg['pathway']['output_dim']
     alpha = cfg['training']['alpha']
     random_seed = cfg['data']['random_seed']
     model_name = cfg['model']['backbone_model']
@@ -88,7 +88,7 @@ def main(rank, world_size, cfg):
     # Initialize PASTA model
     model = PASTA(
         model_name=model_name,
-        pathway_dim=num_pathways,
+        output_dim=output_dim,
         non_negative=cfg['model']['non_negative'],
         enable_attention_hooks=cfg['model']['enable_attention_hooks'],
         scale=cfg['model']['scale']

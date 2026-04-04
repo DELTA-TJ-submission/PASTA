@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 import scanpy as sc
 
-from pasta.utils import load_pathway_config
+from pasta.utils import load_feature_config_file
 
 
 def scan_model_files(model_dir: str = "model") -> Dict[str, List[str]]:
@@ -94,45 +94,45 @@ def scan_model_files(model_dir: str = "model") -> Dict[str, List[str]]:
     return model_mapping
 
 
-def get_pathway_choices(pathway_file: str = "pasta/configs/pathways.json") -> List[Tuple[str, str]]:
+def get_feature_choices(feature_config_file: str = "pasta/configs/pathways.json") -> List[Tuple[str, str]]:
     """
-    Get available pathway configurations.
+    Get available feature set configurations.
     
     Args:
-        pathway_file: Path to pathways configuration file
+        feature_config_file: Path to feature configurations file
         
     Returns:
         List of (display_name, config_key) tuples
     """
     try:
-        pathways = load_pathway_config(pathway_file)
+        feature_configs = load_feature_config_file(feature_config_file)
         choices = []
         
-        for key, config in pathways.items():
+        for key, config in feature_configs.items():
             if key != "description":
                 display_name = config.get("description", key)
                 choices.append((f"{display_name} ({key})", key))
         
         return choices
     except Exception as e:
-        print(f"Error loading pathway configs: {e}")
+        print(f"Error loading feature configs: {e}")
         return [("default_14", "default_14")]
 
 
-def get_pathway_names(pathway_file: str, pathway_config: str) -> List[str]:
+def get_feature_names(feature_config_file: str, feature_set: str) -> List[str]:
     """
-    Get pathway names for a given configuration.
+    Get feature names for a given configuration.
     
     Args:
-        pathway_file: Path to pathways configuration file
-        pathway_config: Configuration key
+        feature_config_file: Path to feature configurations file
+        feature_set: Configuration key
         
     Returns:
-        List of pathway names
+        List of feature names (pathway or gene names)
     """
     try:
-        pathways = load_pathway_config(pathway_file)
-        config = pathways.get(pathway_config, {})
+        feature_configs = load_feature_config_file(feature_config_file)
+        config = feature_configs.get(feature_set, {})
         
         names = config.get("names", [])
         if isinstance(names, str):
@@ -142,7 +142,7 @@ def get_pathway_names(pathway_file: str, pathway_config: str) -> List[str]:
         
         return names
     except Exception as e:
-        print(f"Error loading pathway names: {e}")
+        print(f"Error loading feature names: {e}")
         return []
 
 
@@ -151,8 +151,8 @@ def create_temp_config(
     task_output_dir: str,
     backbone_model: str,
     model_path: str,
-    pathway_config: str,
-    selected_pathways: Optional[List[str]],
+    feature_set: str,
+    selected_features: Optional[List[str]],
     prediction_mode: str,
     downsample_size: int,
     include_tls: bool,
@@ -254,9 +254,9 @@ def create_temp_config(
             "edge_info_path": os.path.join(task_output_dir, "edge_info"),
             "output_path": os.path.join(task_output_dir, "predictions"),
             "file_type": file_type,
-            "pathway_file": "pasta/configs/pathways.json",
-            "pathway_config": pathway_config,
-            "selected_pathways": selected_pathways,
+            "feature_config_file": "pasta/configs/pathways.json",
+            "feature_set": feature_set,
+            "selected_features": selected_features,
             "include_tls": include_tls,
             "prediction_mode": prediction_mode,
             "patch_size": patch_size,

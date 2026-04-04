@@ -75,9 +75,9 @@
     "output_path": "results/demo/predictions",
     "file_type": ".tif",
     
-    "pathway_file": "pasta/configs/pathways.json",
-    "pathway_config": "default_14",
-    "selected_pathways": ["CAF"],
+    "feature_config_file": "pasta/configs/pathways.json",
+    "feature_set": "default_14",
+    "selected_features": ["CAF"],
     "include_tls": false,
     
     "prediction_mode": "pixel",

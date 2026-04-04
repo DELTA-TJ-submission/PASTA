@@ -53,7 +53,7 @@ class DPT(torch.nn.Module):
         readout="project",
         channels_last=False,
         use_bn=False,
-        pathway_dim=6,
+        output_dim=6,
         enable_attention_hooks=False,
         N = 128,
     ):
@@ -111,6 +111,8 @@ class DPT(torch.nn.Module):
             self.embed_dim = 768
         elif model_name=='Hibou-L':
             self.embed_dim = 1024
+        elif model_name=='genbio-pathfm':
+            self.embed_dim = 1536
         elif model_name=='PLIP':
             self.embed_dim = 768
         # self.i_start_token = nn.Parameter(torch.zeros(1, 1, self.embed_dim))  # learnable start token
@@ -175,7 +177,7 @@ class DPT(torch.nn.Module):
     
 class PASTA(DPT):
     def __init__(
-        self, model_name, non_negative=False, pathway_dim=14, scale=1.0, **kwargs
+        self, model_name, non_negative=False, output_dim=14, scale=1.0, **kwargs
     ):
         features = 256
 
@@ -186,14 +188,14 @@ class PASTA(DPT):
             Interpolate(scale_factor=2, mode="bilinear", align_corners=True),
             nn.Conv2d(features // 2, 64, kernel_size=3, stride=1, padding=1),
             nn.ReLU(True),
-            nn.Conv2d(64, pathway_dim, kernel_size=1, stride=1, padding=0),
+            nn.Conv2d(64, output_dim, kernel_size=1, stride=1, padding=0),
             nn.ReLU(True) if non_negative else nn.Identity(),
             nn.Identity(),
         )
 
-        super().__init__(head, model_name=model_name, pathway_dim=pathway_dim, **kwargs)
+        super().__init__(head, model_name=model_name, output_dim=output_dim, **kwargs)
         self.global_avg_pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.recon_conv = ConvNet(pathway_dim)
+        self.recon_conv = ConvNet(output_dim)
 
     def forward(self, x, g=None):
         feat = super().forward(x,g).squeeze(dim=1)
@@ -204,9 +206,9 @@ class PASTA(DPT):
 
 
 class ConvNet(nn.Module):
-    def __init__(self,pathway_dim=14):
+    def __init__(self,output_dim=14):
         super(ConvNet, self).__init__()
-        self.conv1 = nn.Conv2d(pathway_dim, 12, kernel_size=3, padding=1, padding_mode='reflect')
+        self.conv1 = nn.Conv2d(output_dim, 12, kernel_size=3, padding=1, padding_mode='reflect')
         self.conv2 = nn.Conv2d(12, 3, kernel_size=3, padding=1, padding_mode='reflect')
 
     def forward(self, x):

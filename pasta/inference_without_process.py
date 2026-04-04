@@ -15,10 +15,10 @@ import torch.nn.functional as F
 from pasta.model import PASTA
 from pasta.dataset import H5TileDataset_infer, H5TileDataset_runtime
 from pasta.model_utils import post_collate_fn, get_img_transforms, load_model_weights, weight_map_make, weight_matrix_make
-from pasta.utils import generate_he_mask_not_white, get_pathway_config, prepare_pathway_prediction, load_config, npy_to_adata, save_prediction_for_qupath, setup_huggingface
+from pasta.utils import generate_he_mask_not_white, get_feature_config, prepare_feature_prediction, load_config, npy_to_adata, save_prediction_for_qupath, setup_huggingface
 
 
-def generate_large_images(tile_dataloader, patch_size_pxl, model, H_, W_, start_x, start_y, weight_map, pathway_idx=None, is_tls=False, tls_indices=None, loss_model=False, device='cuda:0', downsample_size=1):
+def generate_large_images(tile_dataloader, patch_size_pxl, model, H_, W_, start_x, start_y, weight_map, feature_idx=None, is_tls=False, tls_indices=None, loss_model=False, device='cuda:0', downsample_size=1):
     H_down = H_ // downsample_size
     W_down = W_ // downsample_size
     large_images = torch.zeros((1, H_down, W_down), dtype=torch.float16)
@@ -49,11 +49,11 @@ def generate_large_images(tile_dataloader, patch_size_pxl, model, H_, W_, start_
                 tls_pred = torch.stack([pred[:, idx:idx+1, ...] for idx in tls_indices]).mean(dim=0)
                 pred_resized = F.interpolate(tls_pred, size=(patch_size_down, patch_size_down),
                                          mode='bicubic', align_corners=False).squeeze(0)
-            elif pathway_idx is not None:
-                pred_resized = F.interpolate(pred[:,pathway_idx:pathway_idx+1, ...], size=(patch_size_down, patch_size_down),
+            elif feature_idx is not None:
+                pred_resized = F.interpolate(pred[:,feature_idx:feature_idx+1, ...], size=(patch_size_down, patch_size_down),
                              mode='bicubic', align_corners=False).squeeze(0)
             else:
-                raise ValueError("Either pathway_idx or (is_tls and tls_indices) must be provided")
+                raise ValueError("Either feature_idx or (is_tls and tls_indices) must be provided")
 
             weighted_pred = pred_resized * weight_matrix
             weighted_pred_cpu = weighted_pred.cpu() 
@@ -79,7 +79,7 @@ def generate_large_images(tile_dataloader, patch_size_pxl, model, H_, W_, start_
     return large_images
 
 
-def predict_pixel_level(tile_h5_path, model, img_transforms, wsi_path, edge_info_path, pathway_info, patch_size, output_path='/workspace/results/predictions', save_h5ad=False, save_tiffs=False, downsample_size=10, figsize=10, device='cuda:0', file_type='.svs', draw_images=True, cmap='turbo', use_mask=False, blank=3000, use_runtime_extraction=False, num_workers=1): 
+def predict_pixel_level(tile_h5_path, model, img_transforms, wsi_path, edge_info_path, feature_info, patch_size, output_path='/workspace/results/predictions', save_h5ad=False, save_tiffs=False, downsample_size=10, figsize=10, device='cuda:0', file_type='.svs', draw_images=True, cmap='turbo', use_mask=False, blank=3000, use_runtime_extraction=False, num_workers=1): 
     '''High-resolution pixel-level prediction with optional visualization and h5ad file saving.
     Args:
         tile_h5_path: the path of the tile h5 file
@@ -87,7 +87,7 @@ def predict_pixel_level(tile_h5_path, model, img_transforms, wsi_path, edge_info
         img_transforms: image transformations
         wsi_path: the path of the wsi file
         edge_info_path: the path of the edge info file
-        pathway_info: dict from prepare_pathway_prediction() with 'to_predict' and 'tls_indices'
+        feature_info: dict from prepare_feature_prediction() with 'to_predict' and 'tls_indices'
         patch_size: the size of the patch
         output_path: the path of the output file
         save_h5ad: whether to save h5ad file
@@ -159,31 +159,31 @@ def predict_pixel_level(tile_h5_path, model, img_transforms, wsi_path, edge_info
     # Generate tissue mask
     img_slide_arr = np.array(thumb)
     tissue_mask = generate_he_mask_not_white(img_slide_arr)
-    pathway_names = [name for name, _, _ in pathway_info['to_predict']]
+    feature_names = [name for name, _, _ in feature_info['to_predict']]
 
-    for pathway_name, original_idx, is_tls in pathway_info['to_predict']:
-        print(f'Start {sample_id}-{pathway_name}')
+    for feature_name, original_idx, is_tls in feature_info['to_predict']:
+        print(f'Start {sample_id}-{feature_name}')
 
-        if os.path.exists(f'{output_path}/{sample_id}/{pathway_name.replace("/","_")}_downsample_{downsample_size}.npz'):
-            print(f'File exists: {output_path}/{sample_id}/{pathway_name.replace("/","_")}_downsample_{downsample_size}.npz, skip.')
+        if os.path.exists(f'{output_path}/{sample_id}/{feature_name.replace("/","_")}_downsample_{downsample_size}.npz'):
+            print(f'File exists: {output_path}/{sample_id}/{feature_name.replace("/","_")}_downsample_{downsample_size}.npz, skip.')
             continue
 
         if is_tls:
             large_image = generate_large_images(
                 tile_dataloader, patch_size, model, h_origin, w_origin, x_origin, y_origin, weight_map,
-                is_tls=True, tls_indices=pathway_info['tls_indices'],
+                is_tls=True, tls_indices=feature_info['tls_indices'],
                 downsample_size=downsample_size, device=device
             )
         else:
             large_image = generate_large_images(
                 tile_dataloader, patch_size, model, h_origin, w_origin, x_origin, y_origin, weight_map,
-                pathway_idx=original_idx, downsample_size=downsample_size, device=device
+                feature_idx=original_idx, downsample_size=downsample_size, device=device
             )
         large_image_small = large_image[0].cpu().numpy() 
-        np.savez_compressed(f'{output_path}/{sample_id}/{pathway_name.replace("/","_")}_downsample_{downsample_size}.npz', data=large_image_small)
-        print(f'Save {pathway_name} npz file')
+        np.savez_compressed(f'{output_path}/{sample_id}/{feature_name.replace("/","_")}_downsample_{downsample_size}.npz', data=large_image_small)
+        print(f'Save {feature_name} npz file')
         if save_tiffs:
-            save_prediction_for_qupath(large_image_small, f'{output_path}/{sample_id}/{pathway_name.replace("/","_")}_downsample_{downsample_size}.tiff')
+            save_prediction_for_qupath(large_image_small, f'{output_path}/{sample_id}/{feature_name.replace("/","_")}_downsample_{downsample_size}.tiff')
 
         if draw_images:
             plt.switch_backend('Agg')
@@ -198,7 +198,7 @@ def predict_pixel_level(tile_h5_path, model, img_transforms, wsi_path, edge_info
             plt.imshow(image_nan, cmap=cmap, interpolation='nearest', vmin=vmin
                        #norm=PowerNorm(gamma=0.7,vmin=vmin)
                       )
-            plt.savefig(f'{output_path}/{sample_id}/plots/{pathway_name}_turbo.png', bbox_inches='tight', dpi=300)
+            plt.savefig(f'{output_path}/{sample_id}/plots/{feature_name}_turbo.png', bbox_inches='tight', dpi=300)
             plt.close()
 
             plt.figure(figsize=(figsize,figsize), dpi=300)
@@ -206,23 +206,23 @@ def predict_pixel_level(tile_h5_path, model, img_transforms, wsi_path, edge_info
             plt.imshow(image_nan,cmap='jet',interpolation='nearest',vmin=vmin, alpha=0.35)
             plt.axis('off')
             plt.tight_layout()
-            plt.savefig(f'{output_path}/{sample_id}/plots_overlay/{pathway_name}_turbo_overlay.png', bbox_inches='tight', dpi=300)
+            plt.savefig(f'{output_path}/{sample_id}/plots_overlay/{feature_name}_turbo_overlay.png', bbox_inches='tight', dpi=300)
             plt.close()
-            print(f'Saved {output_path}/{sample_id}/{pathway_name} images')
+            print(f'Saved {output_path}/{sample_id}/{feature_name} images')
     
     if save_h5ad:
         adata = npy_to_adata(os.path.join(output_path, sample_id))
         adata.write_h5ad(f'{output_path}/{sample_id}/{sample_id}_downsample_{downsample_size}.h5ad')
 
 
-def predict_spot_level(tile_h5_path, model, img_transforms, pathway_names, output_path='/workspace/results/predictions_h5ad', device='cuda:0', wsi_path=None, file_type='.svs', use_mask=False, blank=3000, downsample_size=10, filter_background=True, use_runtime_extraction=False, patch_size=224, num_workers=1):
+def predict_spot_level(tile_h5_path, model, img_transforms, feature_names, output_path='/workspace/results/predictions_h5ad', device='cuda:0', wsi_path=None, file_type='.svs', use_mask=False, blank=3000, downsample_size=10, filter_background=True, use_runtime_extraction=False, patch_size=224, num_workers=1):
     '''Low-resolution spot-level prediction for quick prediction and large datasets, output as h5ad format.
     
     Args:
         tile_h5_path: path to the H5 file with patches
         model: PASTA model
         img_transforms: image transformations
-        pathway_names: list of pathway names
+        feature_names: list of feature names (pathway or gene names)
         output_path: output directory for h5ad files
         device: device for inference
         wsi_path: path to WSI files directory (required if filter_background=True)
@@ -367,7 +367,7 @@ def predict_spot_level(tile_h5_path, model, img_transforms, pathway_names, outpu
     
     spot_ids = [f'spot_{i}' for i in range(len(pred_out_mean))]
     adata.obs_names = pd.Index(spot_ids)
-    adata.var_names = pd.Index(pathway_names)
+    adata.var_names = pd.Index(feature_names)
     
     output_file = os.path.join(output_path, f"{sample_id}.h5ad")
     adata.write(output_file)
@@ -384,24 +384,24 @@ def run_inference_pipeline(cfg):
         cfg: inference config prediction.json or demo.json['inference'] block
     """
     
-    # Load pathway config from separate file
-    pathway_config = get_pathway_config(cfg['pathway_file'], cfg['pathway_config'])
-    pathway_info = prepare_pathway_prediction(
-        pathway_config,
-        selected_pathways=cfg.get('selected_pathways'),
+    # Load feature config from separate file
+    feature_config = get_feature_config(cfg['feature_config_file'], cfg['feature_set'])
+    feature_info = prepare_feature_prediction(
+        feature_config,
+        selected_features=cfg.get('selected_features'),
         include_tls=cfg.get('include_tls', False)
     )
     
-    print(f"Predicting pathways: {[name for name, _, _ in pathway_info['to_predict']]}")
+    print(f"Predicting features: {[name for name, _, _ in feature_info['to_predict']]}")
     
     # Initialize model
     img_transforms = get_img_transforms(cfg['backbone_model_name'])
     model = PASTA(
         model_name=cfg['backbone_model_name'], 
-        pathway_dim=len(pathway_info['pathway_names']),
+        output_dim=len(feature_info['feature_names']),
         non_negative=False
     )
-    print(f"Initializing model with pathway_dim={len(pathway_info['pathway_names'])}")
+    print(f"Initializing model with output_dim={len(feature_info['feature_names'])}")
     model = load_model_weights(model, cfg['model_path'])
     model.eval()
     
@@ -434,7 +434,7 @@ def run_inference_pipeline(cfg):
             predict_pixel_level(
                 tile_h5_path, model, img_transforms, 
                 cfg['wsi_path'], cfg['edge_info_path'], 
-                pathway_info, 
+                feature_info, 
                 patch_size=cfg['patch_size'],
                 output_path=cfg.get('output_path', 'results/predictions'),
                 save_h5ad=cfg.get('save_h5ad', False),
@@ -455,7 +455,7 @@ def run_inference_pipeline(cfg):
         for tile_h5_path in pat_list:
             predict_spot_level(
                 tile_h5_path, model, img_transforms,
-                pathway_names=pathway_config['names'],
+                feature_names=feature_config['names'],
                 output_path=cfg.get('output_path', 'results/predictions_h5ad'),
                 device=cfg.get('device', 'cuda:0'),
                 wsi_path=cfg.get('wsi_path'),

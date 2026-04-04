@@ -30,8 +30,8 @@ from pasta.model_utils import get_img_transforms, load_model_weights
 from pasta.utils import (
     load_config, 
     setup_huggingface, 
-    get_pathway_config, 
-    prepare_pathway_prediction
+    get_feature_config, 
+    prepare_feature_prediction
 )
 import h5py
 
@@ -61,11 +61,11 @@ def process_single_slide(args: Tuple[str, dict, int, int, bool]) -> str:
         # Set the current CUDA device
         torch.cuda.set_device(gpu_id)
         
-        # Load pathway configuration
-        pathway_config = get_pathway_config(cfg['pathway_file'], cfg['pathway_config'])
-        pathway_info = prepare_pathway_prediction(
-            pathway_config,
-            selected_pathways=cfg.get('selected_pathways'),
+        # Load feature configuration
+        feature_config = get_feature_config(cfg['feature_config_file'], cfg['feature_set'])
+        feature_info = prepare_feature_prediction(
+            feature_config,
+            selected_features=cfg.get('selected_features'),
             include_tls=cfg.get('include_tls', False)
         )
         
@@ -73,7 +73,7 @@ def process_single_slide(args: Tuple[str, dict, int, int, bool]) -> str:
         img_transforms = get_img_transforms(cfg['backbone_model_name'])
         model = PASTA(
             model_name=cfg['backbone_model_name'], 
-            pathway_dim=len(pathway_info['pathway_names']),
+            output_dim=len(feature_info['feature_names']),
             non_negative=False
         )
         model = load_model_weights(model, cfg['model_path'])
@@ -93,7 +93,7 @@ def process_single_slide(args: Tuple[str, dict, int, int, bool]) -> str:
                     img_transforms,
                     cfg['wsi_path'],
                     cfg['edge_info_path'],
-                    pathway_info,
+                    feature_info,
                     patch_size=cfg['patch_size'],
                     output_path=cfg.get('output_path', 'results/predictions'),
                     save_h5ad=cfg.get('save_h5ad', False),
@@ -115,7 +115,7 @@ def process_single_slide(args: Tuple[str, dict, int, int, bool]) -> str:
                     h5_file,
                     model,
                     img_transforms,
-                    pathway_names=pathway_config['names'],
+                    feature_names=feature_config['names'],
                     output_path=cfg.get('output_path', 'results/predictions_h5ad'),
                     device=device,
                     wsi_path=cfg.get('wsi_path'),
@@ -190,10 +190,10 @@ def filter_completed_slides(h5_files: List[str], config: dict) -> List[str]:
     downsample_size = cfg.get('downsample_size', 10)
     prediction_mode = cfg.get('prediction_mode', 'pixel')
     
-    # Get pathway info to check all expected outputs
-    pathway_config = get_pathway_config(cfg['pathway_file'], cfg['pathway_config'])
-    pathway_info = prepare_pathway_prediction(
-        pathway_config,
+    # Get feature config to check all expected outputs
+    feature_config = get_feature_config(cfg['feature_config_file'], cfg['feature_set'])
+    feature_info = prepare_feature_prediction(
+        feature_config,
         selected_pathways=cfg.get('selected_pathways'),
         include_tls=cfg.get('include_tls', False)
     )
@@ -204,11 +204,11 @@ def filter_completed_slides(h5_files: List[str], config: dict) -> List[str]:
         sample_id = os.path.basename(h5_file).removesuffix('.h5')
         
         if prediction_mode == 'pixel':
-            # Check if all pathway predictions exist
+            # Check if all feature predictions exist
             all_exist = True
-            for pathway_name, _, _ in pathway_info['to_predict']:
-                pathway_file = f"{output_path}/{sample_id}/{pathway_name.replace('/', '_')}_downsample_{downsample_size}.npz"
-                if not os.path.exists(pathway_file):
+            for feature_name, _, _ in feature_info['to_predict']:
+                output_file = f"{output_path}/{sample_id}/{feature_name.replace('/', '_')}_downsample_{downsample_size}.npz"
+                if not os.path.exists(output_file):
                     all_exist = False
                     break
             

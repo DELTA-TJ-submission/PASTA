@@ -15,9 +15,9 @@
     "output_path": "results/demo/predictions/",
     "file_type": ".tif",
     
-    "pathway_file": "code/configs/pathways.json",
-    "pathway_config": "default_14",
-    "selected_pathways": null,
+    "feature_config_file": "code/configs/pathways.json",
+    "feature_set": "default_14",
+    "selected_features": null,
     "include_tls": false,
     
     "prediction_mode": "pixel",

@@ -16,8 +16,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pasta.task_manager import get_task_manager
 from pasta.web_utils import (
     scan_model_files, 
-    get_pathway_choices, 
-    get_pathway_names,
+    get_feature_choices, 
+    get_feature_names,
     create_temp_config,
     format_results_for_display,
     cleanup_old_tasks,
@@ -136,8 +136,8 @@ def submit_prediction(
     wsi_file,
     backbone_model,
     model_file,
-    pathway_config,
-    selected_pathways_text,
+    feature_set,
+    selected_features_text,
     prediction_mode,
     downsample_size,
     include_tls,
@@ -166,10 +166,10 @@ def submit_prediction(
     os.makedirs(os.path.dirname(wsi_save_path), exist_ok=True)
     shutil.copy(wsi_file.name, wsi_save_path)
     
-    # Parse selected pathways
-    selected_pathways = None
-    if selected_pathways_text.strip():
-        selected_pathways = [p.strip() for p in selected_pathways_text.split(",")]
+    # Parse selected features
+    selected_features = None
+    if selected_features_text.strip():
+        selected_features = [p.strip() for p in selected_features_text.split(",")]
     
     # Determine file type
     file_type = os.path.splitext(wsi_filename)[1]
@@ -180,8 +180,8 @@ def submit_prediction(
         task_output_dir=task_output_dir,
         backbone_model=backbone_model,
         model_path=model_file,
-        pathway_config=pathway_config,
-        selected_pathways=selected_pathways,
+        feature_set=feature_set,
+        selected_features=selected_features,
         prediction_mode=prediction_mode,
         downsample_size=downsample_size,
         include_tls=include_tls,
@@ -298,12 +298,12 @@ def update_model_files(backbone):
     )
 
 
-def update_pathway_list(pathway_config):
-    """Update pathway list display."""
-    pathway_names = get_pathway_names("pasta/configs/pathways.json", pathway_config)
-    if pathway_names:
-        return f"Available pathways ({len(pathway_names)}):\n" + "\n".join([f"- {name}" for name in pathway_names[:10]]) + \
-               (f"\n...and {len(pathway_names) - 10} more" if len(pathway_names) > 10 else "")
+def update_feature_list(feature_set):
+    """Update feature list display."""
+    feature_names = get_feature_names("pasta/configs/pathways.json", feature_set)
+    if feature_names:
+        return f"Available pathways ({len(feature_names)}):\n" + "\n".join([f"- {name}" for name in feature_names[:10]]) + \
+               (f"\n...and {len(feature_names) - 10} more" if len(feature_names) > 10 else "")
     return "Unable to load pathway list"
 
 
@@ -396,8 +396,8 @@ def build_interface():
     # Use all backbones as choices, but mark which ones have files
     backbone_choices = all_backbone_choices
     
-    # Get pathway choices
-    pathway_choices = get_pathway_choices()
+    # Get feature set choices
+    feature_choices = get_feature_choices()
     
     # Create model status message
     if not found_backbones:
@@ -453,21 +453,21 @@ def build_interface():
                         interactive=True
                     )
                     
-                    pathway_config = gr.Dropdown(
-                        choices=[choice[1] for choice in pathway_choices],
+                    feature_set = gr.Dropdown(
+                        choices=[choice[1] for choice in feature_choices],
                         label="Pathway Configuration",
-                        value=pathway_choices[0][1] if pathway_choices else "default_14",
+                        value=feature_choices[0][1] if feature_choices else "default_14",
                         info="Select the pathways to predict"
                     )
                     
                     pathway_list_display = gr.Textbox(
                         label="Pathway List",
-                        value=update_pathway_list(pathway_choices[0][1] if pathway_choices else "default_14"),
+                        value=update_feature_list(feature_choices[0][1] if feature_choices else "default_14"),
                         lines=6,
                         interactive=False
                     )
                     
-                    selected_pathways = gr.Textbox(
+                    selected_features = gr.Textbox(
                         label="Specified Pathways (Optional)",
                         placeholder="Leave empty to predict all, or input pathways separated by commas, e.g. CAF, T-cells, B-cells",
                         lines=2
@@ -621,17 +621,17 @@ def build_interface():
             outputs=[model_file, model_status]
         )
         
-        pathway_config.change(
-            fn=update_pathway_list,
-            inputs=[pathway_config],
+        feature_set.change(
+            fn=update_feature_list,
+            inputs=[feature_set],
             outputs=[pathway_list_display]
         )
         
         submit_btn.click(
             fn=submit_prediction,
             inputs=[
-                wsi_file, backbone_model, model_file, pathway_config,
-                selected_pathways, prediction_mode, downsample_size,
+                wsi_file, backbone_model, model_file, feature_set,
+                selected_features, prediction_mode, downsample_size,
                 include_tls, patch_size, step_size, figsize, device,
                 save_tiffs, cmap, hf_token, hf_endpoint
             ],

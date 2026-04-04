@@ -4,6 +4,7 @@ import os
 import types
 import timm
 from timm.layers import SwiGLUPacked
+from huggingface_hub import hf_hub_download
 import torch
 import torch.nn as nn
 from pasta.model_utils import Transpose, ProjectReadout, forward_flex, _resize_pos_embed
@@ -32,7 +33,6 @@ def _load_conch_model():
     Returns:
         model: A timm ViT model with CONCH weights loaded
     """
-    from huggingface_hub import hf_hub_download
     
     # Download CONCH model weights from Hugging Face
     checkpoint_path = hf_hub_download(
@@ -136,6 +136,10 @@ def _make_encoder(
         scratch = _make_scratch(
             [256, 512, 1024, 1024], features, groups=groups, expand=expand
         )
+    elif model_name == 'genbio-pathfm':
+        scratch = _make_scratch(
+            [384, 768, 1536, 1536], features, groups=groups, expand=expand
+        )
     elif model_name == 'PLIP':
         scratch = _make_scratch(
             [192, 384, 768], features, groups=groups, expand=expand
@@ -145,7 +149,7 @@ def _make_encoder(
 
 def _load_pretrained_model(hooks=None, enable_attention_hooks=False, size=[384, 384], freeze_vit=True, model_name='UNI',
 ):
-    from transformers import AutoModel, ViTModel,CLIPModel
+    from transformers import AutoModel, ViTModel, CLIPModel
     # The following settings of models are from their original paper.
     if model_name=='UNI':
         model = timm.create_model("hf-hub:MahmoodLab/uni", pretrained=True, init_values=1e-5, dynamic_img_size=True)
@@ -228,6 +232,37 @@ def _load_pretrained_model(hooks=None, enable_attention_hooks=False, size=[384, 
         model = timm.create_model("hf-hub:MahmoodLab/UNI2-h",pretrained=True, **timm_kwargs)
         hooks = [5, 11, 17, 23] 
         vit_features = 1536; features=[384, 384, 1536, 1536]
+    elif model_name == 'genbio-pathfm':
+        try: 
+            from genbio_pathfm.model import VisionTransformer
+        except ImportError:
+            raise ImportError(
+            "Please install genbio_pathfm: pip install git+https://github.com/genbio-ai/genbio-pathfm.git"
+        )
+        model = VisionTransformer(
+            img_size=224, patch_size=16, embed_dim=1536, depth=40,
+            num_heads=24, ffn_ratio=4, in_chans=1, n_storage_tokens=4,
+            ffn_layer="swiglu64", layerscale_init=1.0e-5,
+            qkv_bias=False, proj_bias=True, ffn_bias=True,
+            pos_embed_rope_rescale_coords=2,
+            pos_embed_rope_jitter_coords=True,
+            pos_embed_rope_normalize_coords="separate",
+        )
+        
+        weights_path = hf_hub_download(
+            repo_id="GenBio-AI/genbio-pathfm",
+            filename="pytorch_model.bin",
+            cache_dir=None
+        )
+        state_dict = torch.load(weights_path, map_location="cpu", weights_only=True)
+        model.load_state_dict(state_dict, strict=True)
+        
+        from pasta.model_transform import genbio_pathfm_transform
+        model = genbio_pathfm_transform(model)
+        
+        hooks = [9, 19, 29, 39] 
+        vit_features = 1536
+        features = [384, 768, 1536, 1536]
     else:
         raise NotImplementedError
 
@@ -359,16 +394,17 @@ def _load_pretrained_model(hooks=None, enable_attention_hooks=False, size=[384, 
         pretrained.model.patch_size = [14, 14]
     elif model_name == 'Hibou-L':
         pretrained.model.patch_size = [14, 14]
+    elif model_name == 'genbio-pathfm':
+        pretrained.model.patch_size = [16, 16]
     elif model_name == 'PLIP':
         pretrained.model.patch_size = [32, 32]
         # Because of patch_size=32 in PLIP, 256=32*2^3, we need to change the number of hook layers to 3
 
-    # We inject this function into the VisionTransformer instances so that
-    # we can use it with interpolated position embeddings without modifying the library source.
-    pretrained.model.forward_flex = types.MethodType(forward_flex, pretrained.model)
-    pretrained.model._resize_pos_embed = types.MethodType(
-        _resize_pos_embed, pretrained.model
-    )
+    if not hasattr(pretrained.model, 'channel_separated') or not pretrained.model.channel_separated:
+        pretrained.model.forward_flex = types.MethodType(forward_flex, pretrained.model)
+        pretrained.model._resize_pos_embed = types.MethodType(
+            _resize_pos_embed, pretrained.model
+        )
     return pretrained
 
 def _make_scratch(in_shape, out_shape, groups=1, expand=False):
@@ -480,9 +516,30 @@ def forward_encoder(pretrained, x, g,i_start_token):
     b, c, h, w = x.shape
     glob = pretrained.model.forward_flex(x,g,i_start_token)
     n = g.shape[1] 
-    layer_1 = pretrained.activations["1"][:,1:-n,:] # [B, 257+n, L] 
-    layer_2 = pretrained.activations["2"][:,1:-n,:]
-    layer_3 = pretrained.activations["3"][:,1:-n,:]
+    
+    # channel separation (genbio-pathfm)
+    is_channel_separated = getattr(pretrained.model, 'channel_separated', False)
+    
+    if is_channel_separated and c == 3:
+        layer_1_full = pretrained.activations["1"]  # [B*3, 1+4+196, D]
+        layer_2_full = pretrained.activations["2"]
+        layer_3_full = pretrained.activations["3"]
+        
+        num_tokens_full, d = layer_1_full.shape[1], layer_1_full.shape[2]
+        layer_1 = layer_1_full.view(b, 3, num_tokens_full, d).mean(dim=1)
+        layer_2 = layer_2_full.view(b, 3, num_tokens_full, d).mean(dim=1)
+        layer_3 = layer_3_full.view(b, 3, num_tokens_full, d).mean(dim=1)
+        
+        n_storage = getattr(pretrained.model, 'n_storage_tokens', 0)
+        if n_storage > 0:
+            layer_1 = torch.cat([layer_1[:, 0:1, :], layer_1[:, 1+n_storage:, :]], dim=1)
+            layer_2 = torch.cat([layer_2[:, 0:1, :], layer_2[:, 1+n_storage:, :]], dim=1)
+            layer_3 = torch.cat([layer_3[:, 0:1, :], layer_3[:, 1+n_storage:, :]], dim=1)
+    else:
+        # Standard processing
+        layer_1 = pretrained.activations["1"][:,1:-n,:] # [B, 257+n, L] 
+        layer_2 = pretrained.activations["2"][:,1:-n,:]
+        layer_3 = pretrained.activations["3"][:,1:-n,:]
     
     layer_1 = pretrained.act_postprocess1[0:2](layer_1).contiguous()
     layer_2 = pretrained.act_postprocess2[0:2](layer_2).contiguous()
@@ -504,7 +561,15 @@ def forward_encoder(pretrained, x, g,i_start_token):
     
     # For models with 4 layers (non-PLIP)
     if "4" in pretrained.activations:
-        layer_4 = pretrained.activations["4"][:,1:-n,:]
+        if is_channel_separated and c == 3:
+            layer_4_full = pretrained.activations["4"]  # [B*3, tokens, D]
+            num_tokens_4, d_4 = layer_4_full.shape[1], layer_4_full.shape[2]
+            layer_4 = layer_4_full.view(b, 3, num_tokens_4, d_4).mean(dim=1)
+            n_storage = getattr(pretrained.model, 'n_storage_tokens', 0)
+            if n_storage > 0:
+                layer_4 = torch.cat([layer_4[:, 0:1, :], layer_4[:, 1+n_storage:, :]], dim=1)
+        else:
+            layer_4 = pretrained.activations["4"][:,1:-n,:]
         layer_4 = pretrained.act_postprocess4[0:2](layer_4).contiguous()
         if layer_4.ndim == 3:
             layer_4 = unflatten(layer_4)

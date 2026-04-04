@@ -2,6 +2,7 @@ import timm
 from timm.layers import resample_abs_pos_embed
 import torch
 import torch.nn as nn
+import types
 
 def _convert_openai_clip(state_dict, model):
     out_dict = {}
@@ -158,4 +159,64 @@ def phikon_transform(model):
     for block in model.blocks:
         block.register_forward_hook(_hook_return_first_output)
     del model.encoder.layer  
+    return model
+
+def genbio_pathfm_transform(model):
+    model.n_storage_tokens = 4
+    model.channel_separated = True
+    
+    original_prepare_tokens = model.prepare_tokens
+    original_rope_embed = model.rope_embed
+    original_blocks = model.blocks
+    original_norm = model.norm
+    
+    model.register_buffer('pos_embed', torch.zeros(1, 1, model.embed_dim))
+    
+    if not hasattr(model, 'pos_drop'):
+        model.pos_drop = nn.Identity()
+    
+    def _encode_single_channel(self, x_single):
+        tokens, (H, W) = original_prepare_tokens(x_single)
+        rope = original_rope_embed(H=H, W=W)
+        
+        for blk in original_blocks:
+            tokens = blk(tokens, rope)
+        
+        tokens = original_norm(tokens)
+        return tokens, (H, W)
+    
+    def forward_flex(self, x, g=None, i_start_token=None):
+        # RGB channel separation.
+        b, c, h, w = x.shape
+        
+        if c == 3:
+            x_separated = x.view(b * 3, 1, h, w)
+            
+            tokens, (H, W) = _encode_single_channel(self, x_separated)
+            num_tokens = tokens.shape[1]
+            tokens = tokens.view(b, 3, num_tokens, self.embed_dim)
+            tokens = tokens.mean(dim=1)  # [B, num_tokens, embed_dim]
+            
+        elif c == 1:
+            tokens, (H, W) = _encode_single_channel(self, x)
+        else:
+            raise ValueError(f"Expected 1 or 3 channels, got {c}")
+        
+        if g is not None and g.shape[1] > 0:
+            tokens = torch.cat([tokens, g], dim=1)
+        
+        if i_start_token is not None and i_start_token.shape[1] > 0:
+            tokens = torch.cat([i_start_token, tokens], dim=1)
+        
+        return tokens
+    
+    def _resize_pos_embed(self, pos_embed, new_h, new_w):
+        num_tokens = 1 + new_h * new_w
+        return torch.zeros(1, num_tokens, self.embed_dim,
+                          device=pos_embed.device, dtype=pos_embed.dtype)
+    
+    model._encode_single_channel = types.MethodType(_encode_single_channel, model)
+    model.forward_flex = types.MethodType(forward_flex, model)
+    model._resize_pos_embed = types.MethodType(_resize_pos_embed, model)
+    
     return model

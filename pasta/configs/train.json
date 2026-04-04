@@ -18,9 +18,9 @@
   
   "pathway": {
     "info_type": "expression",
-    "num_pathways": 313,
-    "pathway_file": "code/configs/pathways.json",
-    "pathway_config": "313_Xenium"
+    "output_dim": 313,
+    "feature_config_file": "code/configs/pathways.json",
+    "feature_set": "313_Xenium"
   },
   
   "model": {

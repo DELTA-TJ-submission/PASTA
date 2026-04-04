@@ -79,13 +79,13 @@ def calculate_metrics(pred, gt):
     return correlation_list, rmse_list, ssim_list
 
 
-def load_pasta_model(model_path, model_name, pathway_dim, device='cuda:0'):
+def load_pasta_model(model_path, model_name, output_dim, device='cuda:0'):
     """Load PASTA model from checkpoint."""
     model = PASTA(
         non_negative=False,
         model_name=model_name,
         enable_attention_hooks=False,
-        pathway_dim=pathway_dim
+        output_dim=output_dim
     )
     state_dict = torch.load(model_path, map_location='cpu')
     
@@ -116,7 +116,7 @@ def access_bins(sample_id, spot_um, adata_dir, gene_names):
 
 
 def aggregate_spot_predictions(tile_dataloader, model, sample_id, weight_matrix, weight_map,
-                               patch_size, mpp, pathway_dim, spot_um_list, adata_dir, 
+                               patch_size, mpp, output_dim, spot_um_list, adata_dir, 
                                gene_names, device='cuda:0', save_dir=None):  # pylint: disable=dangerous-default-value
     """Aggregate patch-level predictions to spot-level for multiple resolutions."""
     pred_spot_dict, gt_spot_dict = {}, {}
@@ -133,7 +133,7 @@ def aggregate_spot_predictions(tile_dataloader, model, sample_id, weight_matrix,
     for spot_um in spot_um_list:
         bin_coords, gt, common_indices = access_bins(sample_id, spot_um, adata_dir, gene_names)
         gt_spot_dict[spot_um] = gt
-        pred_spot_dict[spot_um] = np.zeros((bin_coords.shape[0], pathway_dim))
+        pred_spot_dict[spot_um] = np.zeros((bin_coords.shape[0], output_dim))
         common_indices_dict[spot_um] = common_indices
         bin_coords_dict[spot_um] = bin_coords
     
@@ -194,7 +194,7 @@ def aggregate_spot_predictions(tile_dataloader, model, sample_id, weight_matrix,
 
 def evaluate_fine_grained(model, sample_list, model_name, h5_dir, wsi_dir, adata_dir,
                           gene_names, spot_um_list=None, device='cuda:0', 
-                          pathway_dim=100, save_dir=None):
+                          output_dim=100, save_dir=None):
     """Evaluate model at fine-grained multi-resolution level."""
     if spot_um_list is None:
         spot_um_list = [64, 32, 16]
@@ -227,7 +227,7 @@ def evaluate_fine_grained(model, sample_list, model_name, h5_dir, wsi_dir, adata
         
         pred_spot_dict, gt_spot_dict, bin_coords_dict = aggregate_spot_predictions(
             tile_dataloader, model, sample_id, weight_matrix, weight_map, patch_size, mpp,
-            pathway_dim, spot_um_list, adata_dir, gene_names, device, save_dir
+            output_dim, spot_um_list, adata_dir, gene_names, device, save_dir
         )
         
         sample_dict = tot_results.setdefault(sample_id, {})
@@ -306,7 +306,7 @@ def evaluate_spot_level(model, sample_list, model_name, h5_dir, info_dir,
 
 def run_fine_grained_benchmark(model_name, model_path, meta_csv, h5_dir, wsi_dir, 
                                adata_dir, gene_names_file, output_dir, 
-                               spot_um_list=None, device='cuda:0', pathway_dim=100):
+                               spot_um_list=None, device='cuda:0', output_dim=100):
     """Run fine-grained benchmark evaluation."""
     if spot_um_list is None:
         spot_um_list = [64, 32, 16]
@@ -318,12 +318,12 @@ def run_fine_grained_benchmark(model_name, model_path, meta_csv, h5_dir, wsi_dir
     meta = meta[(meta.datatype == 'ST') & (meta.st_technology.isin(['Visium HD', 'Xenium']))]
     sample_list = meta.id.tolist()
     
-    model = load_pasta_model(model_path, model_name, pathway_dim, device)
+    model = load_pasta_model(model_path, model_name, output_dim, device)
     
     save_dir = os.path.join(output_dir, 'predictions')
     tot_results = evaluate_fine_grained(model, sample_list, model_name, h5_dir, wsi_dir,
                                        adata_dir, gene_names, spot_um_list, device, 
-                                       pathway_dim, save_dir)
+                                       output_dim, save_dir)
     
     os.makedirs(output_dir, exist_ok=True)
     with open(os.path.join(output_dir, 'fine_grained_metrics.pkl'), 'wb') as f:
@@ -334,9 +334,9 @@ def run_fine_grained_benchmark(model_name, model_path, meta_csv, h5_dir, wsi_dir
 
 
 def run_spot_level_benchmark(model_name, model_path, sample_list, h5_dir, info_dir,
-                             output_dir, device='cuda:0', pathway_dim=100):
+                             output_dir, device='cuda:0', output_dim=100):
     """Run spot-level benchmark evaluation."""
-    model = load_pasta_model(model_path, model_name, pathway_dim, device)
+    model = load_pasta_model(model_path, model_name, output_dim, device)
     
     tot_results = evaluate_spot_level(model, sample_list, model_name, h5_dir, 
                                      info_dir, device)
@@ -370,7 +370,7 @@ def main():
             output_dir=f'/workspace/results/train/{model_name}/',
             spot_um_list=[64, 32, 16],
             device='cuda:0',
-            pathway_dim=100
+            output_dim=100
         )
 
 

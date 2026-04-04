@@ -118,69 +118,69 @@ def generate_he_mask_not_white(image_np: np.ndarray, white_threshold = 0.8, blac
     return mask
 
 
-def load_pathway_config(pathway_file: str) -> dict:
-    """Load pathway configurations from separate JSON file."""
-    with open(pathway_file, 'r') as f:
+def load_feature_config_file(feature_config_file: str) -> dict:
+    """Load feature configurations from separate JSON file."""
+    with open(feature_config_file, 'r') as f:
         return json.load(f)
 
 
-def get_pathway_config(pathway_file: str, config_name: str) -> dict:
-    """Get specific pathway configuration by name."""
-    pathways = load_pathway_config(pathway_file)
-    if config_name not in pathways:
-        raise ValueError(f"Pathway config '{config_name}' not found in {pathway_file}")
-    return pathways[config_name]
+def get_feature_config(feature_config_file: str, feature_set: str) -> dict:
+    """Get specific feature set configuration by name."""
+    configs = load_feature_config_file(feature_config_file)
+    if feature_set not in configs:
+        raise ValueError(f"Feature set '{feature_set}' not found in {feature_config_file}")
+    return configs[feature_set]
 
 
-def prepare_pathway_prediction(pathway_config: dict, selected_pathways=None, include_tls: bool = False) -> dict:
+def prepare_feature_prediction(feature_config: dict, selected_features=None, include_tls: bool = False) -> dict:
     """
-    Prepare pathways for prediction.
+    Prepare features for prediction.
     
     Args:
-        pathway_config: dict with 'names' and 'tls_components'
-        selected_pathways: None (all), list of names, or list of indices
+        feature_config: dict with 'names' and 'tls_components'
+        selected_features: None (all), list of names, or list of indices
         include_tls: whether to compute TLS
     
     Returns:
         dict with:
-        - 'pathway_names': original full list
+        - 'feature_names': original full list
         - 'to_predict': list of (name, original_idx, is_tls) tuples
         - 'tls_indices': list of indices for TLS components if needed
     """
-    if isinstance(pathway_config['names'], list):
-        all_pathways = pathway_config['names']
-    elif isinstance(pathway_config['names'], str):
-        with open(pathway_config['names'], mode='r') as f:
-            all_pathways = [line.strip() for line in f] 
+    if isinstance(feature_config['names'], list):
+        all_features = feature_config['names']
+    elif isinstance(feature_config['names'], str):
+        with open(feature_config['names'], mode='r') as f:
+            all_features = [line.strip() for line in f] 
     else:
-        raise ValueError("pathway_config['names'] must be a list or a filepath string.")
+        raise ValueError("feature_config['names'] must be a list or a filepath string.")
 
-    if selected_pathways is None:
-        pathways_to_predict = all_pathways.copy()
+    if selected_features is None:
+        features_to_predict = all_features.copy()
     else:
         # Support both names and indices
-        pathways_to_predict = []
-        for p in selected_pathways:
+        features_to_predict = []
+        for p in selected_features:
             if isinstance(p, int):
-                pathways_to_predict.append(all_pathways[p])
+                features_to_predict.append(all_features[p])
             else:
-                pathways_to_predict.append(p)
+                features_to_predict.append(p)
     
     # Build prediction list
     to_predict = []
-    for name in pathways_to_predict:
-        original_idx = all_pathways.index(name)
+    for name in features_to_predict:
+        original_idx = all_features.index(name)
         to_predict.append((name, original_idx, False))
     
     # Add TLS if requested
     tls_indices = None
     if include_tls:
-        tls_components = pathway_config.get('tls_components', ['B_cells', 'T_cells'])
-        tls_indices = [all_pathways.index(c) for c in tls_components]
+        tls_components = feature_config.get('tls_components', ['B_cells', 'T_cells'])
+        tls_indices = [all_features.index(c) for c in tls_components]
         to_predict.append(('TLS', None, True))
     
     return {
-        'pathway_names': all_pathways,
+        'feature_names': all_features,
         'to_predict': to_predict,
         'tls_indices': tls_indices
     }

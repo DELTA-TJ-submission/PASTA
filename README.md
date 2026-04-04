@@ -15,6 +15,12 @@
 
 ---
 
+## Updates📝
+
+- **2026-04-05**: Added support for [genbio-pathfm](https://huggingface.co/GenBio-AI/genbio-pathfm) 
+
+---
+
 ## Table of Contents
 - [Installation](#installation)
 - [Quick Start](#quick-start)
@@ -466,7 +472,7 @@ Edit `code/configs/train.json`:
   },
   "pathway": {
     "info_type": "expression",
-    "num_pathways": 14
+    "output_dim": 14
   },
   "training": {
     "epochs": 100,
@@ -508,7 +514,7 @@ Training outputs:
 
 ## Benchmark
 
-Currently PASTA supports 15 state-of-the-art pathological foundation models:
+Currently PASTA supports 16 state-of-the-art pathological foundation models:
 
 | Model name | Structure | Layers | Embed size | Params | Dataset | Training recipe |
 |------------|-----------|--------|------------|--------|---------|-----------------|
@@ -527,6 +533,7 @@ Currently PASTA supports 15 state-of-the-art pathological foundation models:
 | [H-optimus-1](https://huggingface.co/bioptimus/H-optimus-1) | ViT-G/14 | 40 | 1536 | 1.1B | Over 1M slides | Self-supervised learning |
 | [Gigapath](https://huggingface.co/prov-gigapath/prov-gigapath) | ViT-G/16 | 40 | 1536 | 1.13B | 1.3B Providence image tiles | DINOv2 |
 | [PLIP](https://huggingface.co/vinid/plip) | ViT-B/32 | 12 | 768 | 87.5M | 208,414 slides paired with descriptions | CLIP |
+| [genbio-pathfm](https://huggingface.co/genbio-ai/genbio-pathfm) | ViT-G/16 | 40 | 1536 | 1.1B | 177,000 WSIs | JEPA + DINO |
 
 **Note:** Model download links are provided above. Please refer to the original repos for access to model weights.
 
