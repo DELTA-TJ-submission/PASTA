@@ -87,14 +87,17 @@ class H5TileDataset(Dataset):
 
 
 class H5TileDataset_infer(Dataset):
-    def __init__(self, h5_path, img_transform=None, chunk_size=64, mask=False, sample_ratio=None):
+    def __init__(self, h5_path, img_transform=None, chunk_size=64, mask=False, info_path=None):
         self.h5_path = h5_path
         self.img_transform = img_transform
         self.chunk_size = chunk_size
         self.mask = mask
+        self.info_df = None
+        if info_path is not None:
+            self.info_df = pd.read_csv(info_path, index_col=0)
+            self.info_df.index = self.info_df.index.astype(str)
         with h5py.File(h5_path, 'r') as f:
             self.n_chunks = int(np.ceil(len(f['img']) / chunk_size))
-        self.sample_ratio = sample_ratio
         
     def __len__(self):
         return self.n_chunks
@@ -105,20 +108,22 @@ class H5TileDataset_infer(Dataset):
         with h5py.File(self.h5_path, 'r') as f:
             imgs = f['img'][start_idx:end_idx]
             coords = f['coords'][start_idx:end_idx]
-        if self.sample_ratio:
-            selected = np.random.choice(range(len(imgs)), size=max(int(len(imgs)*self.sample_ratio),1), replace=False, p=None)
-            imgs = imgs[selected]
-            coords = coords[selected]
+            if self.info_df is not None:
+                barcodes = [b.decode('utf-8') for b in f['barcode'][start_idx:end_idx].flatten()]
+
+        if self.info_df is not None:
+            info_values = torch.Tensor(self.info_df.loc[barcodes].values)
             
         if self.img_transform:
             imgs = torch.stack([self.img_transform(Image.fromarray(img)) for img in imgs])
+
+        result = {'imgs': imgs, 'coords': coords}
+        if self.info_df is not None:
+            result['info_values'] = info_values
         if self.mask:
             mask = get_disk_mask(radius=220)
-            mask_tensor = torch.from_numpy(mask).expand(imgs.shape[0],3, -1, -1)
-
-            return {'imgs': imgs, 'coords': coords, 'mask': mask_tensor}
-        else:
-            return {'imgs': imgs, 'coords': coords,}
+            result['mask'] = torch.from_numpy(mask).expand(imgs.shape[0], 3, -1, -1)
+        return result
 
 
 class H5TileDataset_runtime(Dataset):

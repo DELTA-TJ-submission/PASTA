@@ -40,10 +40,11 @@ def generate_large_images(tile_dataloader, patch_size_pxl, model, H_, W_, start_
             batch = post_collate_fn(batch)
             imgs = batch['imgs'].to(device)
             coords_ = batch['coords'].numpy()
+            g = batch['info_values'].to(device) if 'info_values' in batch else None
             if loss_model:
-                pred, _, _,_,_ = model(imgs)
+                pred, _, _,_,_ = model(imgs, g)
             else:
-                pred, _, _ = model(imgs)
+                pred, _, _ = model(imgs, g)
                 
             if is_tls and tls_indices:
                 tls_pred = torch.stack([pred[:, idx:idx+1, ...] for idx in tls_indices]).mean(dim=0)
@@ -79,7 +80,7 @@ def generate_large_images(tile_dataloader, patch_size_pxl, model, H_, W_, start_
     return large_images
 
 
-def predict_pixel_level(tile_h5_path, model, img_transforms, wsi_path, edge_info_path, feature_info, patch_size, output_path='/workspace/results/predictions', save_h5ad=False, save_tiffs=False, downsample_size=10, figsize=10, device='cuda:0', file_type='.svs', draw_images=True, cmap='turbo', use_mask=False, blank=3000): 
+def predict_pixel_level(tile_h5_path, model, img_transforms, wsi_path, edge_info_path, feature_info, patch_size, output_path='/workspace/results/predictions', save_h5ad=False, save_tiffs=False, downsample_size=10, figsize=10, device='cuda:0', file_type='.svs', draw_images=True, cmap='turbo', use_mask=False, blank=3000, info_path=None): 
     '''High-resolution pixel-level prediction with optional visualization and h5ad file saving.
     Args:
         tile_h5_path: the path of the tile h5 file
@@ -98,6 +99,7 @@ def predict_pixel_level(tile_h5_path, model, img_transforms, wsi_path, edge_info
         cmap: colormap for visualization
         use_mask: whether h5 files are generated from mask processing
         blank: blank space around the image (default: 3000)
+        info_path: optional path to spot-level gene expression CSV for conditional prediction
     '''
     sample_id = os.path.basename(tile_h5_path).removesuffix('.h5')
     if use_mask:
@@ -111,7 +113,7 @@ def predict_pixel_level(tile_h5_path, model, img_transforms, wsi_path, edge_info
     
     print(f'Start {sample_id}')
 
-    tile_dataset = H5TileDataset_infer(tile_h5_path, chunk_size=64, img_transform=img_transforms)
+    tile_dataset = H5TileDataset_infer(tile_h5_path, chunk_size=64, img_transform=img_transforms, info_path=info_path)
     tile_dataloader = torch.utils.data.DataLoader(tile_dataset, 
                                               batch_size=1, 
                                               shuffle=False,
@@ -206,7 +208,7 @@ def predict_pixel_level(tile_h5_path, model, img_transforms, wsi_path, edge_info
         adata.write_h5ad(f'{output_path}/{sample_id}/{sample_id}_downsample_{downsample_size}.h5ad')
 
 
-def predict_spot_level(tile_h5_path, model, img_transforms, feature_names, output_path='/workspace/results/predictions_h5ad', device='cuda:0', wsi_path=None, file_type='.svs', use_mask=False, blank=3000, downsample_size=10, filter_background=True):
+def predict_spot_level(tile_h5_path, model, img_transforms, feature_names, output_path='/workspace/results/predictions_h5ad', device='cuda:0', wsi_path=None, file_type='.svs', use_mask=False, blank=3000, downsample_size=10, filter_background=True, info_path=None):
     '''Low-resolution spot-level prediction for quick prediction and large datasets, output as h5ad format.
     
     Args:
@@ -222,6 +224,7 @@ def predict_spot_level(tile_h5_path, model, img_transforms, feature_names, outpu
         blank: blank space around the image (default: 3000)
         downsample_size: downsample size for generating tissue mask (default: 10)
         filter_background: whether to filter out background spots using tissue mask (default: True)
+        info_path: optional path to spot-level gene expression CSV for conditional prediction
     '''
     
     model = model.to(device)
@@ -235,7 +238,7 @@ def predict_spot_level(tile_h5_path, model, img_transforms, feature_names, outpu
     else:
         wsi_base_name = sample_id
     
-    tile_dataset = H5TileDataset_infer(tile_h5_path, chunk_size=64, img_transform=img_transforms)
+    tile_dataset = H5TileDataset_infer(tile_h5_path, chunk_size=64, img_transform=img_transforms, info_path=info_path)
     tile_dataloader = torch.utils.data.DataLoader(
         tile_dataset, 
         batch_size=1, 
@@ -262,8 +265,9 @@ def predict_spot_level(tile_h5_path, model, img_transforms, feature_names, outpu
             batch = post_collate_fn(batch)
             imgs = batch['imgs'].to(device)
             coords_list.append(batch['coords'])
+            g = batch['info_values'].to(device) if 'info_values' in batch else None
             
-            _, pred_mean, _ = model(imgs)
+            _, pred_mean, _ = model(imgs, g)
             pred_out_mean_list.append(pred_mean.detach().cpu())
         
         pred_out_mean = torch.vstack(pred_out_mean_list)
@@ -389,10 +393,13 @@ def run_inference_pipeline(cfg):
     print(f"Found {len(pat_list)} H5 files to process")
     
     # Get prediction mode
+    info_base = cfg.get('info_base')
     prediction_mode = cfg.get('prediction_mode', 'pixel')
     if prediction_mode == 'pixel':
         print(f"Running pixel-level (high-resolution) prediction...")
         for tile_h5_path in pat_list:
+            sample_id = os.path.basename(tile_h5_path).removesuffix('.h5')
+            info_path = os.path.join(info_base, f'{sample_id}.csv') if info_base else None
             predict_pixel_level(
                 tile_h5_path, model, img_transforms, 
                 cfg['wsi_path'], cfg['edge_info_path'], 
@@ -408,12 +415,15 @@ def run_inference_pipeline(cfg):
                 draw_images=cfg.get('draw_images', True),
                 cmap=cfg.get('cmap', 'turbo'),
                 use_mask=cfg.get('use_mask', False),
-                blank=cfg.get('blank', 3000)
+                blank=cfg.get('blank', 3000),
+                info_path=info_path
             )
     
     elif prediction_mode == 'spot':
         print(f"Running spot-level (low-resolution) prediction...")
         for tile_h5_path in pat_list:
+            sample_id = os.path.basename(tile_h5_path).removesuffix('.h5')
+            info_path = os.path.join(info_base, f'{sample_id}.csv') if info_base else None
             predict_spot_level(
                 tile_h5_path, model, img_transforms,
                 feature_names=feature_config['names'],
@@ -424,7 +434,8 @@ def run_inference_pipeline(cfg):
                 use_mask=cfg.get('use_mask', False),
                 blank=cfg.get('blank', 3000),
                 downsample_size=cfg.get('downsample_size', 10),
-                filter_background=cfg.get('filter_background', True)
+                filter_background=cfg.get('filter_background', True),
+                info_path=info_path
             )
     
     else:
