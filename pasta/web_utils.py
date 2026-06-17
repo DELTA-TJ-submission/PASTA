@@ -28,9 +28,6 @@ def scan_model_files(model_dir: str = "model") -> Dict[str, List[str]]:
     # Recursively scan for .pt and .pth files in all subdirectories
     # Supports structures like:
     #   model/
-    #     pasta-neuro/
-    #       UNI_neuro3_no_pos.pt
-    #       UNIv2_neuro1_pos.pt
     #     pasta-tumor/
     #       ...
     model_files = glob.glob(os.path.join(model_dir, "**/*.pt"), recursive=True) + \
