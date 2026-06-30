@@ -2,7 +2,7 @@
 <div align="center">
   <img src=".github/PASTA_icon.png" alt="PASTA Icon" width="200"/>
   
-  # A plug-and-play foundation model paradigm for gigapixel virual tissue phenotyping 
+  # Gigapixel multilevel virtual tumor tissue phenotyping by pathological foundation models
   
   [![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Models-yellow)](https://huggingface.co/collections/tongjideltalab/pasta)
   [![Docker](https://img.shields.io/badge/Docker-Available-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/repository/docker/bm2labtongji/pasta/general)
@@ -566,7 +566,7 @@ If you find this repository useful, please consider giving a star ⭐ and citati
 ```bibtex
 @software{PASTA,
   author = {Fangliangzi Meng},
-  title = {A plug-and-play foundation model paradigm for multilevel gigapixel phenotyping},
+  title = {Gigapixel multilevel virtual tumor tissue phenotyping by pathological foundation models},
   url = {https://github.com/DELTA-TJ-submission/PASTA},
   year = {2025},
 }
